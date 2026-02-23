@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#059669">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Kas AlHuda">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2910/2910311.png">
+    <title>Kas Musholla Al-Huda</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .card { background: white; border-radius: 16px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
+        .btn-active { background: white; border: 2px solid #059669; color: #059669; font-weight: bold; }
+        .btn-inactive { background: #e2e8f0; color: #475569; font-weight: bold; }
+        /* Memastikan tabel tidak overflow tapi tetap rapi */
+        .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    </style>
+</head>
+<body class="p-4 max-w-2xl mx-auto pb-24">
+
+    <header class="mb-6 text-center mt-4">
+        <h1 class="text-2xl font-bold text-slate-800 tracking-tight">Kas Musholla Al-Huda</h1>
+        <p class="text-slate-500 text-sm">Sistem Informasi Keuangan</p>
+    </header>
+
+    <div class="card p-6 mb-6 bg-emerald-600 text-white text-center">
+        <p class="text-emerald-100 text-sm font-medium uppercase tracking-wider">Total Saldo Saat Ini</p>
+        <h2 id="total-saldo" class="text-3xl font-black mt-1">Rp 0</h2>
+    </div>
+
+    <div class="grid grid-cols-2 gap-2 mb-2">
+        <button onclick="switchTab('rekap')" id="nav-rekap" class="py-3 rounded-xl btn-active w-full">Lihat Data</button>
+        <button onclick="mintaAksesAdmin('input')" id="nav-input" class="py-3 rounded-xl btn-inactive w-full">Tambah Data</button>
+    </div>
+    <button onclick="switchTab('laporan')" id="nav-laporan" class="w-full py-3 mb-6 rounded-xl btn-inactive block">Laporan Detail</button>
+
+    <div id="tab-rekap">
+        <h3 class="font-bold text-slate-700 mb-4 ml-1 italic text-sm underline decoration-emerald-500">Riwayat 20 Transaksi Terakhir</h3>
+        <div id="daftar-transaksi" class="space-y-3">
+            <p class="text-center text-slate-400 py-10">Memuat data...</p>
+        </div>
+    </div>
+
+    <div id="tab-laporan" class="hidden">
+        <div class="card p-4 mb-4 space-y-3">
+            <input type="text" id="filter-search" oninput="muatLaporan()" placeholder="Cari keterangan..." class="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-emerald-500">
+            <div class="grid grid-cols-2 gap-2 text-xs">
+                <select id="filter-tipe" onchange="muatLaporan()" class="p-2 border rounded-lg outline-none">
+                    <option value="semua">Semua Tipe</option>
+                    <option value="masuk">Pemasukan</option>
+                    <option value="keluar">Pengeluaran</option>
+                </select>
+                <input type="month" id="filter-bulan" onchange="muatLaporan()" class="p-2 border rounded-lg outline-none">
+            </div>
+            <button onclick="resetFilter()" class="text-xs text-emerald-600 font-bold underline">Hapus Semua Filter</button>
+        </div>
+
+        <div class="table-container card">
+            <table class="w-full text-left text-sm border-collapse">
+                <thead class="bg-slate-50 border-b">
+                    <tr>
+                        <th class="p-3 text-xs">Tgl</th>
+                        <th class="p-3 text-xs">Keterangan</th>
+                        <th class="p-3 text-right text-xs">Jumlah</th>
+                        <th class="p-3 text-center text-xs">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody id="tabel-body"></tbody>
+                <tfoot class="bg-emerald-50 font-bold border-t-2 border-emerald-200">
+                    <tr>
+                        <td colspan="2" class="p-3 text-emerald-800">TOTAL</td>
+                        <td id="tabel-footer-total" class="p-3 text-right text-emerald-800">Rp 0</td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+    <div id="tab-input" class="hidden">
+        <div class="card p-6 border-2 border-emerald-200">
+            <h3 id="form-title" class="font-bold text-lg mb-4 text-emerald-800">Catat Uang Baru</h3>
+            <input type="hidden" id="edit-id">
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-semibold mb-1 text-slate-600">Tanggal Transaksi</label>
+                    <input id="inp-tgl" type="date" class="w-full p-3 border rounded-xl bg-slate-50 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold mb-1 text-slate-600">Tipe</label>
+                    <select id="inp-tipe" class="w-full p-3 border rounded-xl bg-slate-50 outline-none">
+                        <option value="masuk">Uang Masuk</option>
+                        <option value="keluar">Uang Keluar</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold mb-1 text-slate-600">Keterangan</label>
+                    <input id="inp-ket" type="text" class="w-full p-3 border rounded-xl outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold mb-1 text-slate-600">Jumlah (Rp)</label>
+                    <input id="inp-jumlah" type="number" class="w-full p-3 border rounded-xl outline-none font-bold">
+                </div>
+                <button onclick="simpanData()" id="btn-simpan" class="w-full bg-emerald-600 text-white p-3 rounded-xl font-bold shadow-lg">Simpan Catatan</button>
+                <button onclick="switchTab('rekap')" class="w-full text-slate-400 text-sm mt-2">Batal</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://sxjbsdpejzmgnaolzxxi.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN4amJzZHBlanptZ25hb2x6eHhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE3ODM5NzMsImV4cCI6MjA4NzM1OTk3M30.62vwG48WmeM7W0hIYavEqdzYmovFTi1QKQGUo4Uq6ow';
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let isAdmin = false;
+        let dataGlobal = [];
+
+        async function muatDataUtama() {
+            const { data, error } = await _supabase.from('transaksi').select('*').order('tanggal', { ascending: false });
+            if (error) return console.error(error);
+            dataGlobal = data;
+            renderRingkasan();
+            muatLaporan();
+        }
+
+        function renderRingkasan() {
+            const container = document.getElementById('daftar-transaksi');
+            container.innerHTML = '';
+            
+            dataGlobal.slice(0, 20).forEach(item => {
+                const isMasuk = item.tipe === 'masuk';
+                const tgl = new Date(item.tanggal).toLocaleDateString('id-ID', {day:'numeric', month: 'long', year: 'numeric'});
+                
+                container.innerHTML += `
+                <div class="card p-4 flex justify-between items-start border-l-4 ${isMasuk?'border-emerald-500':'border-red-500'}">
+                    <div class="flex-1 pr-3">
+                        <p class="font-bold text-slate-700 text-sm leading-snug break-words">${item.keterangan}</p>
+                        <p class="text-[10px] text-slate-400 uppercase font-semibold mt-1">${tgl}</p>
+                    </div>
+                    
+                    <div class="flex-shrink-0 text-right">
+                        <p class="font-bold ${isMasuk?'text-emerald-600':'text-red-600'} text-sm whitespace-nowrap">
+                            ${isMasuk?'+':'-'} Rp ${item.jumlah.toLocaleString('id-ID')}
+                        </p>
+                    </div>
+                </div>`;
+            });
+            
+            const saldoTotal = dataGlobal.reduce((acc, curr) => acc + (curr.tipe === 'masuk' ? curr.jumlah : -curr.jumlah), 0);
+            document.getElementById('total-saldo').innerText = 'Rp ' + saldoTotal.toLocaleString('id-ID');
+        }
+
+        function muatLaporan() {
+            const search = document.getElementById('filter-search').value.toLowerCase();
+            const tipe = document.getElementById('filter-tipe').value;
+            const bulan = document.getElementById('filter-bulan').value;
+            
+            const tbody = document.getElementById('tabel-body');
+            tbody.innerHTML = '';
+            let totalFilter = 0;
+
+            const filtered = dataGlobal.filter(item => {
+                const matchSearch = item.keterangan.toLowerCase().includes(search);
+                const matchTipe = tipe === 'semua' || item.tipe === tipe;
+                const matchBulan = !bulan || item.tanggal.startsWith(bulan);
+                return matchSearch && matchTipe && matchBulan;
+            });
+
+            filtered.forEach(item => {
+                const isMasuk = item.tipe === 'masuk';
+                totalFilter += isMasuk ? item.jumlah : -item.jumlah;
+                
+                tbody.innerHTML += `
+                <tr class="border-b">
+                    <td class="p-3 text-[10px] whitespace-nowrap">${item.tanggal.split('-').reverse().slice(0,2).join('/')}</td>
+                    <td class="p-3 text-xs font-medium text-slate-700">${item.keterangan}</td>
+                    <td class="p-3 text-right font-bold text-xs ${isMasuk?'text-emerald-600':'text-red-600'} whitespace-nowrap">${item.jumlah.toLocaleString('id-ID')}</td>
+                    <td class="p-3 text-center">
+                        <button onclick="prepareEdit('${item.id}')" class="text-blue-500 text-[10px] font-bold underline px-2 py-1">Edit</button>
+                    </td>
+                </tr>`;
+            });
+
+            // Update footer total tabel
+            const footerTotal = document.getElementById('tabel-footer-total');
+            footerTotal.innerText = 'Rp ' + totalFilter.toLocaleString('id-ID');
+            footerTotal.className = `p-3 text-right ${totalFilter >= 0 ? 'text-emerald-800' : 'text-red-800'}`;
+        }
+
+        async function simpanData() {
+            const id = document.getElementById('edit-id').value;
+            const payload = {
+                tanggal: document.getElementById('inp-tgl').value,
+                tipe: document.getElementById('inp-tipe').value,
+                keterangan: document.getElementById('inp-ket').value,
+                jumlah: parseInt(document.getElementById('inp-jumlah').value)
+            };
+
+            if (!payload.tanggal || !payload.keterangan || !payload.jumlah) return alert("Mohon lengkapi data!");
+
+            const btn = document.getElementById('btn-simpan');
+            btn.disabled = true;
+            btn.innerText = "Proses...";
+
+            const { error } = id 
+                ? await _supabase.from('transaksi').update(payload).eq('id', id)
+                : await _supabase.from('transaksi').insert([payload]);
+
+            if (!error) {
+                alert("Berhasil!");
+                location.reload();
+            } else {
+                alert("Terjadi kesalahan!");
+                btn.disabled = false;
+                btn.innerText = "Simpan Catatan";
+            }
+        }
+
+        function prepareEdit(id) {
+            if (!isAdmin) {
+                const pass = prompt("Masukkan Sandi untuk Edit:");
+                if (pass !== "AlHuda") return alert("Akses Ditolak");
+                isAdmin = true;
+            }
+            const item = dataGlobal.find(x => x.id == id);
+            document.getElementById('edit-id').value = item.id;
+            document.getElementById('inp-tgl').value = item.tanggal;
+            document.getElementById('inp-tipe').value = item.tipe;
+            document.getElementById('inp-ket').value = item.keterangan;
+            document.getElementById('inp-jumlah').value = item.jumlah;
+            document.getElementById('form-title').innerText = "Edit Data Transaksi";
+            switchTab('input');
+        }
+
+        function switchTab(tab) {
+            ['rekap', 'laporan', 'input'].forEach(t => {
+                document.getElementById('tab-'+t).classList.add('hidden');
+                document.getElementById('nav-'+t).className = "py-3 rounded-xl btn-inactive w-full";
+            });
+            
+            document.getElementById('tab-'+tab).classList.remove('hidden');
+            const navBtn = document.getElementById('nav-'+tab);
+            
+            if (tab === 'laporan') {
+                navBtn.className = "w-full py-3 mb-6 rounded-xl btn-active block";
+            } else {
+                navBtn.className = "py-3 rounded-xl btn-active w-full";
+                document.getElementById('nav-laporan').className = "w-full py-3 mb-6 rounded-xl btn-inactive block";
+            }
+            
+            if (tab !== 'input') {
+                document.getElementById('edit-id').value = '';
+                document.getElementById('form-title').innerText = "Catat Uang Baru";
+            }
+        }
+
+        function mintaAksesAdmin(tab) {
+            if (isAdmin) return switchTab(tab);
+            const pass = prompt("Masukkan Sandi Bendahara:");
+            if (pass === "AlHuda") {
+                isAdmin = true;
+                switchTab(tab);
+            } else { alert("Sandi Salah!"); }
+        }
+
+        function resetFilter() {
+            document.getElementById('filter-search').value = '';
+            document.getElementById('filter-tipe').value = 'semua';
+            document.getElementById('filter-bulan').value = '';
+            muatLaporan();
+        }
+
+        muatDataUtama();
+    </script>
+</body>
+</html>
