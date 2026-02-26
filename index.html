@@ -18,25 +18,70 @@
         .btn-active { background: white; border: 2px solid #059669; color: #059669; font-weight: bold; }
         .btn-inactive { background: #e2e8f0; color: #475569; font-weight: bold; }
         .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        
+        /* Sidebar Menu Styles */
+        #side-menu {
+            transition: transform 0.3s ease-in-out;
+            transform: translateX(-100%);
+        }
+        #side-menu.open {
+            transform: translateX(0);
+        }
+        .menu-overlay {
+            display: none;
+            background: rgba(0,0,0,0.5);
+        }
+        .menu-overlay.show {
+            display: block;
+        }
     </style>
 </head>
-<body class="p-4 max-w-2xl mx-auto pb-24">
+<body class="p-4 max-w-2xl mx-auto pb-24 relative">
 
-    <header class="mb-6 text-center mt-4">
-        <h1 class="text-2xl font-bold text-slate-800 tracking-tight">Kas Musholla Al-Huda</h1>
-        <p class="text-slate-500 text-sm">Sistem Informasi Keuangan</p>
+    <div id="menu-overlay" class="menu-overlay fixed inset-0 z-40" onclick="toggleMenu()"></div>
+
+    <div id="side-menu" class="fixed top-0 left-0 h-full w-64 bg-white z-50 shadow-2xl p-6">
+        <div class="flex justify-between items-center mb-8">
+            <h2 class="font-bold text-emerald-800 text-xl">Menu Utama</h2>
+            <button onclick="toggleMenu()" class="text-slate-500 text-2xl">&times;</button>
+        </div>
+        <nav class="space-y-4">
+            <a href="index.html" class="block p-3 rounded-xl bg-emerald-50 text-emerald-700 font-bold border-l-4 border-emerald-500">
+                💰 Laporan Kas
+            </a>
+            <a href="takjil_ramadhan_2026.html" class="block p-3 rounded-xl text-slate-600 hover:bg-slate-100 font-medium transition">
+                🌙 Jadwal Takjil 2026
+            </a>
+            <div class="pt-4 mt-4 border-t border-slate-100">
+                <p class="text-[10px] text-slate-400 uppercase font-bold px-3">Mendatang</p>
+                <span class="block p-3 text-slate-300 italic text-sm italic">Fitur lainnya...</span>
+            </div>
+        </nav>
+    </div>
+
+    <header class="mb-6 mt-4 relative">
+        <button onclick="toggleMenu()" class="absolute left-0 top-0 p-2 text-slate-700 hover:bg-slate-100 rounded-lg transition" aria-label="Menu">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+        </button>
+
+        <div class="text-center pt-2">
+            <h1 class="text-2xl font-bold text-slate-800 tracking-tight">Kas Musholla Al-Huda</h1>
+            <p class="text-slate-500 text-sm">Sistem Informasi Keuangan</p>
+        </div>
     </header>
 
     <div class="card p-6 mb-6 bg-emerald-600 text-white text-center">
         <p class="text-emerald-100 text-sm font-medium uppercase tracking-wider">Total Saldo Saat Ini</p>
-        <h2 id="total-saldo" class="text-3xl font-black mt-1">Rp 0</h2>
+        <h2 id="total-saldo" class="text-3xl font-black mt-2">Rp 0</h2>
     </div>
 
     <div class="grid grid-cols-2 gap-2 mb-2">
         <button onclick="switchTab('rekap')" id="nav-rekap" class="py-3 rounded-xl btn-active w-full">Lihat Data</button>
         <button onclick="mintaAksesAdmin('input')" id="nav-input" class="py-3 rounded-xl btn-inactive w-full">Tambah Data</button>
     </div>
-    <button onclick="switchTab('laporan')" id="nav-laporan" class="w-full py-3 mb-6 rounded-xl btn-inactive block">Laporan Detail</button>
+    <button onclick="switchTab('laporan')" id="nav-laporan" class="w-full py-3 mb-6 rounded-xl btn-inactive block">Laporan Detail & Edit</button>
 
     <div id="tab-rekap">
         <h3 class="font-bold text-slate-700 mb-4 ml-1 italic text-sm underline decoration-emerald-500">Riwayat 20 Transaksi Terakhir</h3>
@@ -112,12 +157,21 @@
     </div>
 
     <script>
+        // Supabase Configuration
         const SUPABASE_URL = 'https://sxjbsdpejzmgnaolzxxi.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN4amJzZHBlanptZ25hb2x6eHhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE3ODM5NzMsImV4cCI6MjA4NzM1OTk3M30.62vwG48WmeM7W0hIYavEqdzYmovFTi1QKQGUo4Uq6ow';
         const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         let isAdmin = false;
         let dataGlobal = [];
+
+        // Fungsi Toggle Menu
+        function toggleMenu() {
+            const menu = document.getElementById('side-menu');
+            const overlay = document.getElementById('menu-overlay');
+            menu.classList.toggle('open');
+            overlay.classList.toggle('show');
+        }
 
         async function muatDataUtama() {
             const { data, error } = await _supabase.from('transaksi').select('*').order('tanggal', { ascending: false });
@@ -133,17 +187,16 @@
             
             dataGlobal.slice(0, 20).forEach(item => {
                 const isMasuk = item.tipe === 'masuk';
-                const tgl = new Date(item.tanggal).toLocaleDateString('id-ID', {day:'numeric', month: 'long', year: 'numeric'});
+                const tgl = new Date(item.tanggal).toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'});
                 
                 container.innerHTML += `
-                <div class="card p-4 flex justify-between items-start border-l-4 ${isMasuk?'border-emerald-500':'border-red-500'}">
+                <div class="card p-5 flex justify-between items-start border-l-[6px] ${isMasuk?'border-emerald-500':'border-red-500'} mb-4">
                     <div class="flex-1 pr-3">
-                        <p class="font-bold text-slate-700 text-sm leading-snug break-words">${item.keterangan}</p>
-                        <p class="text-[10px] text-slate-400 uppercase font-semibold mt-1">${tgl}</p>
+                        <p class="font-extrabold text-slate-900 text-lg leading-tight break-words">${item.keterangan}</p>
+                        <p class="text-xs text-slate-500 uppercase font-bold mt-2 tracking-wide">${tgl}</p>
                     </div>
-                    
                     <div class="flex-shrink-0 text-right">
-                        <p class="font-bold ${isMasuk?'text-emerald-600':'text-red-600'} text-sm whitespace-nowrap">
+                        <p class="font-black ${isMasuk?'text-emerald-700':'text-red-700'} text-lg whitespace-nowrap">
                             ${isMasuk?'+':'-'} Rp ${item.jumlah.toLocaleString('id-ID')}
                         </p>
                     </div>
@@ -151,7 +204,8 @@
             });
             
             const saldoTotal = dataGlobal.reduce((acc, curr) => acc + (curr.tipe === 'masuk' ? curr.jumlah : -curr.jumlah), 0);
-            document.getElementById('total-saldo').innerText = 'Rp ' + saldoTotal.toLocaleString('id-ID');
+            const elementSaldo = document.getElementById('total-saldo');
+            elementSaldo.innerText = 'Rp ' + saldoTotal.toLocaleString('id-ID');
         }
 
         function muatLaporan() {
@@ -185,7 +239,6 @@
                 </tr>`;
             });
 
-            // Update footer total tabel
             const footerTotal = document.getElementById('tabel-footer-total');
             footerTotal.innerText = 'Rp ' + totalFilter.toLocaleString('id-ID');
             footerTotal.className = `p-3 text-right ${totalFilter >= 0 ? 'text-emerald-800' : 'text-red-800'}`;
@@ -214,7 +267,8 @@
                 alert("Berhasil!");
                 location.reload();
             } else {
-                alert("Terjadi kesalahan!");
+                console.error(error);
+                alert("Terjadi kesalahan: " + error.message);
                 btn.disabled = false;
                 btn.innerText = "Simpan Catatan";
             }
@@ -223,7 +277,7 @@
         function prepareEdit(id) {
             if (!isAdmin) {
                 const pass = prompt("Masukkan Sandi untuk Edit:");
-                if (pass !== "AlHuda77") return alert("Akses Ditolak");
+                if (pass !== "AlHuda") return alert("Akses Ditolak");
                 isAdmin = true;
             }
             const item = dataGlobal.find(x => x.id == id);
@@ -277,5 +331,4 @@
         muatDataUtama();
     </script>
 </body>
-
 </html>

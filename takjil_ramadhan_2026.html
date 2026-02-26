@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Jadwal Takjil - Al-Huda</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; font-size: 16px; }
+        .card { background: white; border-radius: 16px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
+        .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .tag-buka { background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 99px; font-size: 10px; font-weight: bold; }
+        .tag-tadarus { background: #fef9c3; color: #854d0e; padding: 2px 8px; border-radius: 99px; font-size: 10px; font-weight: bold; }
+    </style>
+</head>
+<body class="p-4 max-w-4xl mx-auto pb-10">
+
+    <header class="mb-6 mt-4 flex items-center gap-4">
+        <a href="index.html" class="p-2 bg-white rounded-xl shadow-sm text-slate-600">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+        </a>
+        <div>
+            <h1 class="text-2xl font-bold text-slate-800 tracking-tight">Jadwal Takjil 2026</h1>
+            <p class="text-slate-500 text-sm">Musholla Al-Huda</p>
+        </div>
+    </header>
+
+    <div class="card p-4 mb-6 space-y-3">
+        <input type="text" id="search-nama" oninput="filterData()" placeholder="Cari nama atau alamat..." class="w-full p-3 border rounded-xl outline-none focus:ring-2 focus:ring-emerald-500">
+        <div class="grid grid-cols-2 gap-2">
+            <select id="filter-tipe" onchange="filterData()" class="p-3 border rounded-xl outline-none bg-slate-50 text-sm">
+                <option value="semua">Semua Tipe</option>
+                <option value="Buka Puasa">Buka Puasa</option>
+                <option value="Tadarus">Tadarus</option>
+            </select>
+            <select id="filter-ramadhan" onchange="filterData()" class="p-3 border rounded-xl outline-none bg-slate-50 text-sm">
+                <option value="semua">Semua Hari</option>
+                </select>
+        </div>
+    </div>
+
+    <div class="table-container card">
+        <table class="w-full text-left text-sm border-collapse">
+            <thead class="bg-emerald-600 text-white">
+                <tr>
+                    <th class="p-4 text-xs font-bold uppercase">Ramadhan</th>
+                    <th class="p-4 text-xs font-bold uppercase">Hari / Tgl</th>
+                    <th class="p-4 text-xs font-bold uppercase">Nama</th>
+                    <th class="p-4 text-xs font-bold uppercase">Alamat</th>
+                    <th class="p-4 text-xs font-bold uppercase text-center">Tipe</th>
+                </tr>
+            </thead>
+            <tbody id="tabel-takjil-body" class="divide-y divide-slate-100">
+                <tr>
+                    <td colspan="5" class="p-10 text-center text-slate-400">Memuat data jadwal...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://sxjbsdpejzmgnaolzxxi.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN4amJzZHBlanptZ25hb2x6eHhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE3ODM5NzMsImV4cCI6MjA4NzM1OTk3M30.62vwG48WmeM7W0hIYavEqdzYmovFTi1QKQGUo4Uq6ow';
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let dataTakjil = [];
+
+        async function muatJadwal() {
+            const { data, error } = await _supabase
+                .from('jadwal_takjil_2026')
+                .select('*')
+                .order('hari_tgl_masehi', { ascending: true });
+
+            if (error) {
+                console.error(error);
+                return;
+            }
+
+            dataTakjil = data;
+            isiFilterRamadhan();
+            renderTabel(dataTakjil);
+        }
+
+        function isiFilterRamadhan() {
+            const select = document.getElementById('filter-ramadhan');
+            const listRamadhan = [...new Set(dataTakjil.map(item => item.ramadhan_ke))];
+            listRamadhan.forEach(day => {
+                const opt = document.createElement('option');
+                opt.value = day;
+                opt.innerText = "Ramadhan Ke-" + day;
+                select.appendChild(opt);
+            });
+        }
+
+        function renderTabel(data) {
+            const tbody = document.getElementById('tabel-takjil-body');
+            tbody.innerHTML = '';
+
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="p-10 text-center text-slate-400">Data tidak ditemukan.</td></tr>';
+                return;
+            }
+
+            data.forEach(item => {
+                const tglMasehi = new Date(item.hari_tgl_masehi).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year:'numeric' });
+                const tagClass = item.tipe_takjil === 'Buka Puasa' ? 'tag-buka' : 'tag-tadarus';
+
+                tbody.innerHTML += `
+                <tr class="hover:bg-slate-50 transition">
+                    <td class="p-4 font-bold text-emerald-700 text-center">#${item.ramadhan_ke}</td>
+                    <td class="p-4">
+                        <div class="font-bold text-slate-800">${tglMasehi}</div>
+                        <div class="text-[10px] text-slate-400 uppercase font-bold">${item.hari_tgl_hijriyah}</div>
+                    </td>
+                    <td class="p-4 font-extrabold text-slate-900">${item.nama_penyumbang}</td>
+                    <td class="p-4 text-xs text-slate-500">${item.alamat || '-'}</td>
+                    <td class="p-4 text-center">
+                        <span class="${tagClass}">${item.tipe_takjil}</span>
+                    </td>
+                </tr>`;
+            });
+        }
+
+        function filterData() {
+    const search = document.getElementById('search-nama').value.toLowerCase();
+    const tipe = document.getElementById('filter-tipe').value;
+    const ramadhan = document.getElementById('filter-ramadhan').value;
+
+    const filtered = dataTakjil.filter(item => {
+        // Cek apakah teks pencarian ada di nama ATAU di alamat
+        const namaPenyumbang = item.nama_penyumbang ? item.nama_penyumbang.toLowerCase() : '';
+        const alamatPenyumbang = item.alamat ? item.alamat.toLowerCase() : '';
+        
+        const matchSearch = namaPenyumbang.includes(search) || alamatPenyumbang.includes(search);
+        
+        const matchTipe = tipe === 'semua' || item.tipe_takjil === tipe;
+        const matchRamadhan = ramadhan === 'semua' || item.ramadhan_ke === ramadhan;
+        
+        return matchSearch && matchTipe && matchRamadhan;
+    });
+
+    renderTabel(filtered);
+}
+
+        muatJadwal();
+    </script>
+</body>
+</html>
